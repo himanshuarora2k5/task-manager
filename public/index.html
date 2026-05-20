@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f0f2f5; min-height: 100vh; padding: 40px 20px; }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 28px; color: #1a1a2e; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 28px; }
+    .input-row { display: flex; gap: 10px; margin-bottom: 24px; }
+    input { flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0;
+            border-radius: 8px; font-size: 15px; outline: none; transition: border .2s; }
+    input:focus { border-color: #4361ee; }
+    .btn { padding: 12px 20px; background: #4361ee; color: white; border: none;
+           border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: 600;
+           white-space: nowrap; transition: background .2s; }
+    .btn:hover { background: #3451d1; }
+    .btn.danger { background: #ef233c; }
+    .btn.danger:hover { background: #d90429; }
+    .btn.success { background: #06d6a0; }
+    .btn.success:hover { background: #05b386; }
+    .btn.sm { padding: 6px 12px; font-size: 13px; }
+    .task-list { display: flex; flex-direction: column; gap: 10px; }
+    .task-card { background: white; border-radius: 10px; padding: 16px 20px;
+                 display: flex; align-items: center; gap: 12px;
+                 box-shadow: 0 1px 4px rgba(0,0,0,.07); border: 1px solid #e8e8e8; }
+    .task-title { flex: 1; font-size: 15px; color: #1a1a2e; }
+    .task-title.done { text-decoration: line-through; color: #aaa; }
+    .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.done { background: #d1fae5; color: #065f46; }
+    .actions { display: flex; gap: 6px; }
+    .empty { text-align: center; color: #aaa; padding: 40px; font-size: 15px; }
+    .stats { font-size: 13px; color: #888; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Task Manager</h1>
+    <p class="subtitle">Python Flask · Deployed on AWS EC2 via GitHub Actions</p>
+    <div class="input-row">
+      <input id="taskInput" placeholder="Enter a task..."
+             onkeydown="if(event.key==='Enter') addTask()" />
+      <button class="btn" onclick="addTask()">Add Task</button>
+    </div>
+    <div id="stats" class="stats"></div>
+    <div id="taskList" class="task-list"></div>
+  </div>
+
+  <script>
+    async function loadTasks() {
+      const res = await fetch('/api/tasks');
+      const tasks = await res.json();
+      const list = document.getElementById('taskList');
+      const stats = document.getElementById('stats');
+      const done = tasks.filter(t => t.status === 'done').length;
+      stats.textContent = tasks.length
+        ? `${tasks.length} task${tasks.length !== 1 ? 's' : ''} · ${done} completed`
+        : '';
+      list.innerHTML = tasks.length === 0
+        ? '<div class="empty">No tasks yet. Add one above!</div>'
+        : tasks.map(t => `
+          <div class="task-card">
+            <span class="task-title ${t.status === 'done' ? 'done' : ''}">${t.title}</span>
+            <span class="status-badge ${t.status}">${t.status}</span>
+            <div class="actions">
+              <button class="btn success sm"
+                onclick="toggleTask(${t.id},'${t.status==='done'?'pending':'done'}')">
+                ${t.status === 'done' ? 'Undo' : 'Done'}
+              </button>
+              <button class="btn danger sm" onclick="deleteTask(${t.id})">Delete</button>
+            </div>
+          </div>`).join('');
+    }
+
+    async function addTask() {
+      const input = document.getElementById('taskInput');
+      if (!input.value.trim()) return;
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: input.value.trim() })
+      });
+      input.value = '';
+      loadTasks();
+    }
+
+    async function toggleTask(id, status) {
+      await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      loadTasks();
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      loadTasks();
+    }
+
+    loadTasks();
+  </script>
+</body>
+</html>

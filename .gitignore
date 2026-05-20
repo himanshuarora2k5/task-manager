@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+tasks.db
+.env
+*.pem
+venv/
+.venv/
+*.log
